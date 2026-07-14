@@ -25,7 +25,7 @@
 
 const CONFIG = {
   // Your license plate, exactly as registered.
-  plate: "YOUR_PLATE_HERE",
+  plate: "KKT2650",
 
   // State for the "Select State or Province" dropdown. Use the exact option
   // text ("New York") or the two-letter code ("NY") — both are tried.
