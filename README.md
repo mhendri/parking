@@ -46,14 +46,23 @@ garage can never get auto-paid.
 
    ```js
    const CONFIG = {
-     plate: "ABC1234",                // your license plate
-     state: "NY",                     // "NY" or "New York" both work
+     vehicles: [
+       { label: "My car",    plate: "ABC1234", state: "NY" },
+       // add more cars here, e.g.:
+       // { label: "Other car", plate: "XYZ9876", state: "NY" },
+     ],
      locationName: "MTA Pearl River", // safety guard — leave as is
      autoAdvanceToPayment: false,
    };
    ```
 
 3. Save.
+
+**Multiple cars:** list every car in `vehicles`. With one entry the script
+just fills it in, as before. With two or more, whichever car you used *last
+time* is pre-filled automatically, and a small "Car:" bar appears at the
+bottom of the page — one tap switches the form to a different plate (and
+that becomes the new default). Driving your usual car costs zero extra taps.
 
 ### Step 3 — Create the one-tap Home Screen button
 

@@ -15,21 +15,27 @@
  *   1. Landing screen        -> taps "Go"
  *   2. Rate screen ($1.40)   -> taps "Next"
  *   3. Vehicle Information   -> fills "Your License Plate" + "Select State or
- *                               Province", from CONFIG below
+ *                               Province" with your last-used vehicle below
  *   4. STOPS at "Buy with Apple Pay" — double-click the side button and
  *      Face ID. The script never sees or stores card data.
+ *
+ * MULTIPLE CARS: list them all in CONFIG.vehicles. With more than one, a
+ * small switcher bar appears at the bottom of the page — the last-used car
+ * is pre-filled automatically, and one tap on the bar switches the form to
+ * a different plate. Your choice is remembered for next time.
  *
  * If LAZ changes their wording/markup, adjust CONFIG or the button words in
  * ADVANCE_WORDS below. Watch console logs ([LAZ-autopay] lines) to debug.
  */
 
 const CONFIG = {
-  // Your license plate, exactly as registered.
-  plate: "KKT2650",
-
-  // State for the "Select State or Province" dropdown. Use the exact option
-  // text ("New York") or the two-letter code ("NY") — both are tried.
-  state: "NY",
+  // Your cars. The first entry is the default until you've used the
+  // switcher once; after that, whichever car you used last wins.
+  // "state" accepts the two-letter code ("NY") or full text ("New York").
+  vehicles: [
+    { label: "My car", plate: "KKT2650", state: "NY" },
+    // { label: "Other car", plate: "ABC1234", state: "NY" },
+  ],
 
   // Safety guard: only act when the page shows this location name, so a
   // LAZ link for some other garage never gets auto-paid. Set "" to disable.
@@ -45,6 +51,7 @@ const CONFIG = {
   "use strict";
 
   const TAG = "[LAZ-autopay]";
+  const LAST_PLATE_KEY = "lazAutopayLastPlate";
   const log = (...a) => console.log(TAG, ...a);
   const norm = (s) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();
 
@@ -94,6 +101,105 @@ const CONFIG = {
       return blob.includes("state") || blob.includes("province") || blob.includes("region");
     });
 
+  // ---- Vehicle selection -------------------------------------------------
+
+  const vehicles = CONFIG.vehicles.filter((v) => v && v.plate);
+  let activeVehicle = null;
+
+  const defaultVehicle = () => {
+    let last = null;
+    try {
+      last = localStorage.getItem(LAST_PLATE_KEY);
+    } catch (e) {
+      /* storage may be unavailable; fall through to first vehicle */
+    }
+    return vehicles.find((v) => norm(v.plate) === norm(last)) || vehicles[0];
+  };
+
+  const applyVehicle = (v) => {
+    activeVehicle = v;
+    const plateInput = findPlateInput();
+    if (plateInput) {
+      setNativeValue(plateInput, v.plate.toUpperCase());
+      log("Filled plate:", v.plate.toUpperCase(), "(" + (v.label || "unlabeled") + ")");
+    }
+    const stateSelect = findStateSelect();
+    if (stateSelect && v.state) {
+      const want = norm(v.state);
+      const opt = [...stateSelect.options].find(
+        (o) => norm(o.value) === want || norm(o.textContent) === want || norm(o.textContent).startsWith(want)
+      );
+      if (opt) {
+        stateSelect.value = opt.value;
+        stateSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        log("Selected state:", opt.textContent.trim());
+      }
+    }
+    try {
+      localStorage.setItem(LAST_PLATE_KEY, v.plate);
+    } catch (e) {
+      /* non-fatal */
+    }
+    styleSwitcher();
+  };
+
+  // Small fixed bar with one button per car; only rendered when there is
+  // actually a choice to make. Tapping a car re-fills the form.
+  let switcherBar = null;
+  const showSwitcher = () => {
+    if (switcherBar || vehicles.length < 2) return;
+    switcherBar = document.createElement("div");
+    switcherBar.style.cssText =
+      "position:fixed;left:8px;right:8px;bottom:110px;z-index:999999;" +
+      "display:flex;gap:8px;align-items:center;padding:10px;border-radius:14px;" +
+      "background:rgba(20,20,20,0.92);color:#fff;font:14px -apple-system,sans-serif;" +
+      "box-shadow:0 4px 16px rgba(0,0,0,0.35);";
+    const title = document.createElement("span");
+    title.textContent = "Car:";
+    title.style.cssText = "opacity:0.7;flex:0 0 auto;";
+    switcherBar.appendChild(title);
+    for (const v of vehicles) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = v.label || v.plate.toUpperCase();
+      btn.dataset.plate = v.plate;
+      btn.style.cssText =
+        "flex:1 1 auto;padding:10px 6px;border-radius:10px;border:1px solid #555;" +
+        "background:#333;color:#fff;font:inherit;";
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        applyVehicle(v);
+      });
+      switcherBar.appendChild(btn);
+    }
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = "✕";
+    close.setAttribute("aria-label", "Dismiss car switcher");
+    close.style.cssText =
+      "flex:0 0 auto;padding:10px 12px;border:none;background:none;color:#aaa;font:inherit;";
+    close.addEventListener("click", () => {
+      switcherBar.remove();
+      switcherBar = null;
+    });
+    switcherBar.appendChild(close);
+    document.body.appendChild(switcherBar);
+    styleSwitcher();
+  };
+
+  const styleSwitcher = () => {
+    if (!switcherBar) return;
+    for (const btn of switcherBar.querySelectorAll("button[data-plate]")) {
+      const active = activeVehicle && norm(btn.dataset.plate) === norm(activeVehicle.plate);
+      btn.style.background = active ? "#0a84ff" : "#333";
+      btn.style.borderColor = active ? "#0a84ff" : "#555";
+      btn.style.fontWeight = active ? "600" : "400";
+    }
+  };
+
+  // ---- Click-through -----------------------------------------------------
+
   // Click bookkeeping: never re-click the same element, cap same-label
   // clicks at 3 with a cooldown, so SPA re-renders can move us forward
   // through repeated "Next" screens without ever loop-clicking.
@@ -114,34 +220,19 @@ const CONFIG = {
 
   const visibleButtons = () =>
     [...document.querySelectorAll("button, [role=button], input[type=submit]")].filter(
-      (el) => el.offsetParent !== null && !el.disabled
+      (el) => el.offsetParent !== null && !el.disabled && !(switcherBar && switcherBar.contains(el))
     );
 
-  let filledPlate = false;
-  let filledState = false;
+  let filledOnce = false;
 
   const tick = () => {
-    if (!locationOk()) return;
+    if (!locationOk() || vehicles.length === 0) return;
 
     const plateInput = findPlateInput();
-    if (plateInput && !filledPlate) {
-      filledPlate = true;
-      setNativeValue(plateInput, CONFIG.plate.toUpperCase());
-      log("Filled plate:", CONFIG.plate.toUpperCase());
-    }
-
-    const stateSelect = findStateSelect();
-    if (stateSelect && !filledState && CONFIG.state) {
-      const want = norm(CONFIG.state);
-      const opt = [...stateSelect.options].find(
-        (o) => norm(o.value) === want || norm(o.textContent) === want || norm(o.textContent).startsWith(want)
-      );
-      if (opt) {
-        filledState = true;
-        stateSelect.value = opt.value;
-        stateSelect.dispatchEvent(new Event("change", { bubbles: true }));
-        log("Selected state:", opt.textContent.trim());
-      }
+    if (plateInput && !filledOnce) {
+      filledOnce = true;
+      applyVehicle(defaultVehicle());
+      showSwitcher();
     }
 
     // Advance through Go/Next screens. Never auto-click anything on a
@@ -152,11 +243,11 @@ const CONFIG = {
       const isAdvance = ADVANCE_EXACT.includes(t) || ADVANCE_WORDS.some((w) => t.includes(w));
       const isPay = PAY_WORDS.some((w) => t.includes(w));
       if (t.includes("apple pay") || t.includes("google pay")) continue; // user's job
-      if (isAdvance && (!plateInput || filledPlate)) {
+      if (isAdvance && (!plateInput || filledOnce)) {
         clickButton(el, t);
         break;
       }
-      if (isPay && CONFIG.autoAdvanceToPayment && filledPlate) {
+      if (isPay && CONFIG.autoAdvanceToPayment && filledOnce) {
         clickButton(el, t);
         break;
       }
