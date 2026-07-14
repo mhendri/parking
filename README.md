@@ -57,16 +57,16 @@ garage can never get auto-paid.
 
 ### Step 3 — Create the one-tap Home Screen button
 
-Option A — plain bookmark (simplest):
+Use the **Shortcuts app** for this — don't use Safari's *Add to Home Screen*.
+(The /433 link instantly redirects to a `go.lazparking.com` session URL, so a
+Safari bookmark captures the wrong, possibly single-use address. A Shortcut
+stores the original URL and only follows the redirect when tapped.)
 
-1. Open `https://pay.lazparking.com/433` in Safari.
-2. Tap **Share → Add to Home Screen**, name it "Pay Parking".
-
-Option B — Shortcuts (lets you add extras later):
-
-1. **Shortcuts** app → **+** → add action **Open URLs** with
-   `https://pay.lazparking.com/433`.
-2. Name it "Pay Parking", tap its icon → **Add to Home Screen**.
+1. Open the **Shortcuts** app → tap **+**.
+2. Tap **Add Action**, search for **Open URLs**, select it.
+3. Tap the dim "URL" placeholder and enter `https://pay.lazparking.com/433`.
+4. Tap the name at the top → **Rename** → "Pay Parking".
+5. Same menu → **Add to Home Screen** → **Add**.
 
 ### Step 4 — Verify Apple Pay
 
