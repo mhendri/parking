@@ -34,7 +34,11 @@ const CONFIG = {
   // "state" accepts the two-letter code ("NY") or full text ("New York").
   vehicles: [
     { label: "My car", plate: "KKT2650", state: "NY" },
-    // { label: "Other car", plate: "ABC1234", state: "NY" },
+    { label: "Alfie", plate: "JNL1007", state: "NY" },
+    { label: "Stelvio", plate: "KZT8591", state: "NY" },
+    { label: "Q", plate: "MDR8958", state: "NY" },
+    // etron: fill in the real plate, then uncomment:
+    // { label: "etron", plate: "XXXXXXX", state: "NY" },
   ],
 
   // Safety guard: only act when the page shows this location name, so a
@@ -151,7 +155,7 @@ const CONFIG = {
     switcherBar = document.createElement("div");
     switcherBar.style.cssText =
       "position:fixed;left:8px;right:8px;bottom:110px;z-index:999999;" +
-      "display:flex;gap:8px;align-items:center;padding:10px;border-radius:14px;" +
+      "display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;border-radius:14px;" +
       "background:rgba(20,20,20,0.92);color:#fff;font:14px -apple-system,sans-serif;" +
       "box-shadow:0 4px 16px rgba(0,0,0,0.35);";
     const title = document.createElement("span");
@@ -164,7 +168,7 @@ const CONFIG = {
       btn.textContent = v.label || v.plate.toUpperCase();
       btn.dataset.plate = v.plate;
       btn.style.cssText =
-        "flex:1 1 auto;padding:10px 6px;border-radius:10px;border:1px solid #555;" +
+        "flex:1 1 28%;padding:10px 6px;border-radius:10px;border:1px solid #555;" +
         "background:#333;color:#fff;font:inherit;";
       btn.addEventListener("click", (e) => {
         e.preventDefault();
