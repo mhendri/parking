@@ -58,11 +58,11 @@ garage can never get auto-paid.
 
 3. Save.
 
-**Multiple cars:** list every car in `vehicles`. With one entry the script
-just fills it in, as before. With two or more, whichever car you used *last
-time* is pre-filled automatically, and a small "Car:" bar appears at the
-bottom of the page — one tap switches the form to a different plate (and
-that becomes the new default). Driving your usual car costs zero extra taps.
+**Multiple cars:** list every car in `vehicles`. Whichever car you used
+*last time* is pre-filled automatically; a small pill in the corner (e.g.
+"🚗 Alfie ▾") just shows which one. Driving your usual car: ignore it, zero
+extra taps. Different car today: tap the pill, pick the car from the list
+that expands, and it becomes the new default for next time.
 
 ### Step 3 — Create the one-tap Home Screen button
 

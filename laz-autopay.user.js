@@ -19,10 +19,10 @@
  *   4. STOPS at "Buy with Apple Pay" — double-click the side button and
  *      Face ID. The script never sees or stores card data.
  *
- * MULTIPLE CARS: list them all in CONFIG.vehicles. With more than one, a
- * small switcher bar appears at the bottom of the page — the last-used car
- * is pre-filled automatically, and one tap on the bar switches the form to
- * a different plate. Your choice is remembered for next time.
+ * MULTIPLE CARS: list them all in CONFIG.vehicles. The last-used car is
+ * pre-filled automatically and a small pill in the corner shows which one
+ * (e.g. "🚗 Alfie"). Usual car? Ignore it. Different car today? Tap the
+ * pill and pick — that becomes the new default for next time.
  *
  * If LAZ changes their wording/markup, adjust CONFIG or the button words in
  * ADVANCE_WORDS below. Watch console logs ([LAZ-autopay] lines) to debug.
@@ -147,14 +147,23 @@ const CONFIG = {
     styleSwitcher();
   };
 
-  // Small fixed bar with one button per car; only rendered when there is
-  // actually a choice to make. Tapping a car re-fills the form.
+  // On-demand switcher: a small pill in the corner shows the active car;
+  // tapping it expands the full picker. With one car, nothing is shown.
   let switcherBar = null;
-  const showSwitcher = () => {
-    if (switcherBar || vehicles.length < 2) return;
+  let pill = null;
+
+  const collapseSwitcher = () => {
+    if (switcherBar) {
+      switcherBar.remove();
+      switcherBar = null;
+    }
+  };
+
+  const expandSwitcher = () => {
+    if (switcherBar) return;
     switcherBar = document.createElement("div");
     switcherBar.style.cssText =
-      "position:fixed;left:8px;right:8px;bottom:110px;z-index:999999;" +
+      "position:fixed;left:8px;right:8px;bottom:160px;z-index:999999;" +
       "display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;border-radius:14px;" +
       "background:rgba(20,20,20,0.92);color:#fff;font:14px -apple-system,sans-serif;" +
       "box-shadow:0 4px 16px rgba(0,0,0,0.35);";
@@ -174,25 +183,45 @@ const CONFIG = {
         e.preventDefault();
         e.stopPropagation();
         applyVehicle(v);
+        collapseSwitcher();
       });
       switcherBar.appendChild(btn);
     }
     const close = document.createElement("button");
     close.type = "button";
     close.textContent = "✕";
-    close.setAttribute("aria-label", "Dismiss car switcher");
+    close.setAttribute("aria-label", "Close car picker");
     close.style.cssText =
       "flex:0 0 auto;padding:10px 12px;border:none;background:none;color:#aaa;font:inherit;";
-    close.addEventListener("click", () => {
-      switcherBar.remove();
-      switcherBar = null;
-    });
+    close.addEventListener("click", collapseSwitcher);
     switcherBar.appendChild(close);
     document.body.appendChild(switcherBar);
     styleSwitcher();
   };
 
+  const showSwitcher = () => {
+    if (pill || vehicles.length < 2) return;
+    pill = document.createElement("button");
+    pill.type = "button";
+    pill.setAttribute("aria-label", "Switch car");
+    pill.style.cssText =
+      "position:fixed;right:10px;bottom:110px;z-index:999998;" +
+      "padding:8px 14px;border-radius:999px;border:none;" +
+      "background:rgba(20,20,20,0.85);color:#fff;font:13px -apple-system,sans-serif;" +
+      "box-shadow:0 2px 10px rgba(0,0,0,0.3);";
+    pill.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      switcherBar ? collapseSwitcher() : expandSwitcher();
+    });
+    document.body.appendChild(pill);
+    styleSwitcher();
+  };
+
   const styleSwitcher = () => {
+    if (pill && activeVehicle) {
+      pill.textContent = "🚗 " + (activeVehicle.label || activeVehicle.plate.toUpperCase()) + " ▾";
+    }
     if (!switcherBar) return;
     for (const btn of switcherBar.querySelectorAll("button[data-plate]")) {
       const active = activeVehicle && norm(btn.dataset.plate) === norm(activeVehicle.plate);
@@ -224,7 +253,11 @@ const CONFIG = {
 
   const visibleButtons = () =>
     [...document.querySelectorAll("button, [role=button], input[type=submit]")].filter(
-      (el) => el.offsetParent !== null && !el.disabled && !(switcherBar && switcherBar.contains(el))
+      (el) =>
+        el.offsetParent !== null &&
+        !el.disabled &&
+        el !== pill &&
+        !(switcherBar && switcherBar.contains(el))
     );
 
   let filledOnce = false;
